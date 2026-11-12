@@ -1,91 +1,111 @@
 import streamlit as st
-import chess
-import base64
+import numpy as np
+from PIL import Image
+import joblib
+import requests
+import io
 
-st.set_page_config(page_title="Streamlit Chess", page_icon="♟️", layout="centered")
+st.set_page_config(page_title="Handwritten Digit Recognition", page_icon="")
+Handwritten Digit Recognition")
+st.write("Upload a handwritten digit image and AI will try to recognize it.")
 
-# Initialize game state
-if "board" not in st.session_state:
-    st.session_state.board = chess.Board()
+# Simple model loading with fallback
+@st.cache_resource
+def load_model():
+try:
 
-board = st.session_state.board
+st.title("
 
-st.title("♟️ Python Chess in Streamlit")
-st.write("Play a game of chess locally by entering your moves below!")
+# Try to load pre-trained model
+# Using sklearn's built-in digits dataset
+from sklearn.datasets import load_digits
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import train_test_split
 
-# Reset button in sidebar
-with st.sidebar:
-    st.header("Game Controls")
-    if st.button("🔄 New Game"):
-        st.session_state.board = chess.Board()
-        st.rerun()
-    
-    st.markdown("---")
-    st.markdown("### Rules & Help")
-    st.write("Enter moves in **SAN** format (e.g., `e4`, `Nf3`, `O-O`) or **UCI** format (e.g., `e2e4`).")
+digits = load_digits()
+X = digits.images.reshape((len(digits.images), -1)) / 16.0
 
-# Render board as SVG
-def render_board(board_obj):
-    svg = chess.svg.board(board_obj, size=400)
-    encoded = base64.b64encode(svg.encode('utf-8')).decode('utf-8')
-    return f'<img src="data:image/svg+xml;base64,{encoded}" width="400"/>'
+try:
+# Convert to grayscale and resize to 8x8
+img_gray = image.convert('L')
+img_resized = img_gray.resize((8, 8))
 
-# Layout columns
-col1, col2 = st.columns([1, 1])
+# Convert to numpy array and invert if needed
+img_array = np.array(img_resized)
 
-with col1:
-    st.markdown(render_board(board), unsafe_allow_html=True)
+# If background is dark, invert
+if np.mean(img_array) > 128:
+img_array = 255 - img_array
 
-with col2:
-    st.subheader("Game Status")
-    
-    # Check game status
-    if board.is_checkmate():
-        winner = "Black" if board.turn == chess.WHITE else "White"
-        st.error(f"🏁 **Checkmate! {winner} wins!**")
-    elif board.is_stalemate():
-        st.warning("🤝 **Draw by stalemate!**")
-    elif board.is_check():
-        st.warning("⚠️ **Check!**")
-    else:
-        turn_str = "White's turn" if board.turn == chess.WHITE else "Black's turn"
-        st.info(f"Current turn: **{turn_str}**")
+# Normalize like the training data
+img_array = img_array / 16.0
+img_flat = img_array.flatten().reshape(1, -1)
 
-    # Move input form
-    with st.form(key="move_form", clear_on_submit=True):
-        move_input = st.text_input("Enter Move (e.g. e4, Nf3):")
-        submit_button = st.form_submit_button(label="Play Move")
+if model is not None:
+# Make prediction
+prediction = model.predict(img_flat)[0]
+st.write(f"## Prediction: ** {prediction} ** ")
 
-        if submit_button and move_input:
-            move_input = move_input.strip()
-            try:
-                # Try parsing as SAN (Standard Algebraic Notation) first, then UCI
-                move = board.parse_san(move_input)
-            except ValueError:
-                try:
-                    move = chess.Move.from_uci(move_input)
-                except ValueError:
-                    move = None
+# Show probabilities
+probs = model.predict_proba(img_flat)[0]
+st.write("### Probabilities:")
+for i, prob in enumerate(probs):
+st.write(f"Digit {i}: {prob: .2%}")
 
-            if move and move in board.legal_moves:
-                board.push(move)
-                st.rerun()
-            else:
-                st.error("❌ Invalid move! Check notation or legality.")
+else:
+# Fallback: simple threshold-based recognition
+st.write("## Using fallback recognition")
+# Simple
+ole heuristic based on pixel intensity
 
-    # Move history
-    st.markdown("### Move History")
-    move_stack = board.move_stack
-    if move_stack:
-        history_text = ""
-        temp_board = chess.Board()
-        for i, m in enumerate(move_stack):
-            san_move = temp_board.san(m)
-            temp_board.push(m)
-            if i % 2 == 0:
-                history_text += f"{i//2 + 1}. {san_move} "
-            else:
-                history_text += f"{san_move}  "
-        st.text_area("Moves:", value=history_text, height=100, disabled=True)
-    else:
-        st.write("No moves played yet.")
+st.write(f"Digit {i}: {prob: .2%}")
+
+# Fallback: simple threshold-based recognition
+st.write("## Using fallback recognition")
+# Simple heuristic based on pixel intensity
+digit_guess = np.argmax(np.sum(img_array.reshape(8, 8), axis=0)) % 10
+st.write(f"Estimated digit: ** {digit_guess} ** ")
+
+except Exception as e:
+st.error(f"Error processing image: {e}")
+
+# Instructions
+st.sidebar.header("Instructions")
+st.sidebar.write("""
+1. Upload an image of a handwritten digit (0-9)
+2. The image will be resized to 8x8 pixels
+3. AI model will predict the digit
+4. For best results:
+- White background
+- Black digit
+- Centered digit
+- Minimal noise
+y = digits.target
+X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = MLPClassifier(
+hidden_layer_sizes=(100,),
+max_iter=100,
+random_state=42
+
+model.fit(X_train, y_train)
+return model
+except Exception as e:
+st.error(f"Model loading error: {e}")
+return None
+
+model = load_model()
+
+if model is None:
+st.warning("Could not load model. Using fallback recognition.")
+else:
+st. success("Model loaded successfully!")
+
+# File uploader
+uploaded_file = st.file_uploader("Choose an image file", type-["png", "jpg", "jpeg"])
+
+if uploaded_file is not None:
+# Display the uploaded image
+image = Image.open(uploaded_file)
+st.image(image, caption='Uploaded Image', use_column_width=True)
+""")
